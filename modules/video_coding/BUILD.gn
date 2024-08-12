@@ -186,6 +186,8 @@ rtc_library("video_coding") {
     "generic_decoder.h",
     "h264_sps_pps_tracker.cc",
     "h264_sps_pps_tracker.h",
+    "h265_vps_sps_pps_tracker.cc",
+    "h265_vps_sps_pps_tracker.h",
     "include/video_codec_initializer.h",
     "internal_defines.h",
     "loss_notification_controller.cc",

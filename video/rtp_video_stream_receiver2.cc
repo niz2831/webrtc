@@ -39,6 +39,7 @@
 #include "modules/rtp_rtcp/source/video_rtp_depacketizer_raw.h"
 #include "modules/video_coding/h264_sprop_parameter_sets.h"
 #include "modules/video_coding/h264_sps_pps_tracker.h"
+#include "modules/video_coding/h265_vps_sps_pps_tracker.h"
 #include "modules/video_coding/nack_requester.h"
 #include "modules/video_coding/packet_buffer.h"
 #include "rtc_base/checks.h"
@@ -643,7 +644,7 @@ bool RtpVideoStreamReceiver2::OnReceivedPayloadData(
     return false;
   }
 
-  if (packet->codec() == kVideoCodecH264) {
+  if (packet->codec() == kVideoCodecH264 || packet->codec() == kVideoCodecH265) {
     // Only when we start to receive packets will we know what payload type
     // that will be used. When we know the payload type insert the correct
     // sps/pps into the tracker.
@@ -651,7 +652,7 @@ bool RtpVideoStreamReceiver2::OnReceivedPayloadData(
       last_payload_type_ = packet->payload_type;
       InsertSpsPpsIntoTracker(packet->payload_type);
     }
-  }
+  } 
 
   if (packet->codec() == kVideoCodecH264 && !h26x_packet_buffer_) {
     video_coding::H264SpsPpsTracker::FixedBitstream fixed =
@@ -671,6 +672,23 @@ bool RtpVideoStreamReceiver2::OnReceivedPayloadData(
         break;
     }
 
+  } else if (packet->codec() == kVideoCodecH265 && !h26x_packet_buffer_) {
+    video_coding::H265VpsSpsPpsTracker::FixedBitstream fixed =
+        h265_tracker_.CopyAndFixBitstream(
+            rtc::MakeArrayView(codec_payload.cdata(), codec_payload.size()),
+            &packet->video_header);
+
+    switch (fixed.action) {
+      case video_coding::H265VpsSpsPpsTracker::kRequestKeyframe:
+        rtcp_feedback_buffer_.RequestKeyFrame();
+        rtcp_feedback_buffer_.SendBufferedRtcpFeedback();
+        ABSL_FALLTHROUGH_INTENDED;
+      case video_coding::H265VpsSpsPpsTracker::kDrop:
+        return false;
+      case video_coding::H265VpsSpsPpsTracker::kInsert:
+        packet->video_payload = std::move(fixed.bitstream);
+        break;
+    }
   } else {
     packet->video_payload = std::move(codec_payload);
   }

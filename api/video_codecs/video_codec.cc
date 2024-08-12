@@ -53,6 +53,16 @@ bool VideoCodecH264::operator==(const VideoCodecH264& other) const {
           numberOfTemporalLayers == other.numberOfTemporalLayers);
 }
 
+bool VideoCodecH265::operator==(const VideoCodecH265& other) const {
+  return (frameDroppingOn == other.frameDroppingOn &&
+          keyFrameInterval == other.keyFrameInterval &&
+          vpsLen == other.vpsLen && spsLen == other.spsLen &&
+          ppsLen == other.ppsLen &&
+          (spsLen == 0 || memcmp(spsData, other.spsData, spsLen) == 0) &&
+          (ppsLen == 0 || memcmp(ppsData, other.ppsData, ppsLen) == 0));
+}
+
+
 VideoCodec::VideoCodec()
     : codecType(kVideoCodecGeneric),
       width(0),
@@ -145,6 +155,17 @@ const VideoCodecAV1& VideoCodec::AV1() const {
   RTC_DCHECK_EQ(codecType, kVideoCodecAV1);
   return codec_specific_.AV1;
 }
+
+VideoCodecH265* VideoCodec::H265() {
+  RTC_DCHECK_EQ(codecType, kVideoCodecH265);
+  return &codec_specific_.H265;
+}
+
+const VideoCodecH265& VideoCodec::H265() const {
+  RTC_DCHECK_EQ(codecType, kVideoCodecH265);
+  return codec_specific_.H265;
+}
+
 
 const char* CodecTypeToPayloadString(VideoCodecType type) {
   switch (type) {
